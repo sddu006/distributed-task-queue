@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Queue Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 30px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            color: #f8fafc;
+        }
+
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px 28px;
+            min-width: 140px;
+        }
+
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pending  .number { color: #f59e0b; }
+        .running  .number { color: #3b82f6; }
+        .done     .number { color: #22c55e; }
+        .failed   .number { color: #ef4444; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        th {
+            text-align: left;
+            padding: 14px 20px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            background: #162032;
+        }
+
+        td {
+            padding: 14px 20px;
+            border-top: 1px solid #0f172a;
+            font-size: 14px;
+        }
+
+        tr:hover td { background: #243044; }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge.pending  { background: #451a03; color: #f59e0b; }
+        .badge.running  { background: #172554; color: #60a5fa; }
+        .badge.done     { background: #052e16; color: #22c55e; }
+        .badge.failed   { background: #450a0a; color: #f87171; }
+
+        .refresh {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+
+        .id { font-family: monospace; font-size: 12px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <h1>Task Queue Dashboard</h1>
+    <p class="subtitle">Live job monitoring — auto refreshes every 2 seconds</p>
+
+    <div class="stats">
+        <div class="stat-card pending">
+            <div class="number" id="count-pending">0</div>
+            <div class="label">Pending</div>
+        </div>
+        <div class="stat-card running">
+            <div class="number" id="count-running">0</div>
+            <div class="label">Running</div>
+        </div>
+        <div class="stat-card done">
+            <div class="number" id="count-done">0</div>
+            <div class="label">Done</div>
+        </div>
+        <div class="stat-card failed">
+            <div class="number" id="count-failed">0</div>
+            <div class="label">Failed</div>
+        </div>
+    </div>
+
+    <p class="refresh" id="refresh-text">Fetching jobs...</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Job ID</th>
+                <th>Type</th>
+                <th>Payload</th>
+                <th>Status</th>
+                <th>Retries</th>
+                <th>Created At</th>
+            </tr>
+        </thead>
+        <tbody id="job-table">
+        </tbody>
+    </table>
+
+    <script>
+        async function fetchJobs() {
+            try {
+                const res = await fetch('http://localhost:8080/jobs');
+                const jobs = await res.json();
+
+                const counts = { pending: 0, running: 0, done: 0, failed: 0 };
+                jobs.forEach(j => counts[j.status]++);
+
+                document.getElementById('count-pending').textContent = counts.pending;
+                document.getElementById('count-running').textContent = counts.running;
+                document.getElementById('count-done').textContent    = counts.done;
+                document.getElementById('count-failed').textContent  = counts.failed;
+
+                const tbody = document.getElementById('job-table');
+                tbody.innerHTML = jobs.map(job => `
+                    <tr>
+                        <td class="id">${job.id}</td>
+                        <td>${job.type}</td>
+                        <td>${job.payload}</td>
+                        <td><span class="badge ${job.status}">${job.status}</span></td>
+                        <td>${job.retries}</td>
+                        <td>${new Date(job.created_at).toLocaleTimeString()}</td>
+                    </tr>
+                `).join('');
+
+                document.getElementById('refresh-text').textContent
+                    = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+            } catch (err) {
+                document.getElementById('refresh-text').textContent = 'Error fetching jobs';
+            }
+        }
+
+        fetchJobs();
+        setInterval(fetchJobs, 2000);
+    </script>
+</body>
+</html>

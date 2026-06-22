@@ -1,0 +1,4 @@
+aof.log
+*.log
+tmp/
+.env
